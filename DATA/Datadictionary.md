@@ -1,3 +1,6 @@
+# Data Dictionary for Star Wars Dialogue
+### this is the data dictionary for all three Star Wars Movies. Each dataframe has the same columns
+  
   | Column name/ Question | Description                                                                                       | Potential Reponses |
 | --- | --- | --- |
 | Entry   | this is an auto-incrimented entry counter |  1,2,3,4               |
