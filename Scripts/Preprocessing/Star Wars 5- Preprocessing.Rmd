@@ -1,0 +1,59 @@
+---
+title: "Star Wars 5- Text file Conversion"
+author: "Samuel Rea"
+date: "`r Sys.Date()`"
+output: html_document
+---
+loading in the packages and setting working directory. Commented out currently
+```{r}
+#you may have to install some of the packages using the install.packages() function then library them
+#setwd("/Users/samrea5/Desktop/uvafourthyear/second_semester/DS 4000 data science project/project1")
+```
+
+Load in the data that you need to do the text analysis just starting with 4
+```{r}
+#you must library "stringr" package for this analysis
+library(stringr)
+#reading the lines into an object in R
+sw <- iconv(readLines("StarWars_EpisodeV_script.txt", encoding = "UTF-8"), to = "ASCII", sub = " ")
+#inspecting the first lines to make sure everything parced together correctly
+sw[1:70]
+#this gives us a variable that is the length of the number of lines so we can properly loop through the data to place it into a data frame
+nlines = length(sw)
+#dialogue starts on line 30 so intialize i to 30 
+i = 30
+
+#this loop takes the orginial star wars 5 text file and converts it into a new workable textfile for later
+current = FALSE
+writeLines("STAR WARS - EPISODE 5: THE EMPIRE STRIKES BACK", "EpisodeV_dialogues.txt")
+i = i + 1
+while (i <= nlines)
+{
+  # if empty line
+  if (sw[i] == "" || substr(sw[i], 1, 1) == " ") {
+    current = FALSE
+    i = i + 1  # next line
+  } else {
+    # EXTERIOR or INTERIOR (we don't want these lines)
+    if (str_extract(sw[i], "\\w+") %in% c("INTERIOR", "EXTERIOR"))
+    {
+      current = FALSE
+      i = i + 1
+    } else {
+      # good dialogue
+      if (!current) {
+        cat("\n", file="EpisodeV_dialogues.txt", append=TRUE)
+        cat(sw[i], "", file="EpisodeV_dialogues.txt", append=TRUE)
+        i = i + 1
+        current = TRUE
+      } else {
+        cat("", sw[i], file="EpisodeV_dialogues.txt", append=TRUE)
+        i = i + 1
+        current = TRUE
+      }
+    }
+  }
+}
+```
+
+now Star Wars Movie 5 is in a workable txt file. this preprocessing is done.
