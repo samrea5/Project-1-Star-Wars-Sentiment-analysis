@@ -9,7 +9,7 @@ For this sentiment analysis, we chose to use R Studio. This gave us all the feat
 
 
 ## Section 2
-###D ocumentation of the Project
+### Documentation of the Project
 This GitHub repository contains several folders that organize different components of the project. The first folder, named DATA, comprises two subfolders: Preliminary Data and Final Data. The Preliminary Data folder contains original text files that underwent preprocessing to generate the final text files. In the Final Data folder, there are two types of data: processed text files containing the scripts, and a CSV file containing the dataframe derived from these text files, which was used for sentiment analysis.
 
 The Scripts folder contains two subfolders as well. The Preprocessing folder consists of R markdown files detailing the process of converting the original text files into the updated versions. The Analysis folder houses scripts responsible for converting the updated text files into dataframes and performing the required sentiment analysis.
