@@ -1,0 +1,477 @@
+---
+title: "analysis of Starwars"
+author: "Samuel Rea"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+librarying the packages needed to complete this analysis. Also loading in the Sentiment Dictionary we used
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(tidytext)
+library(dplyr)
+library(stats)
+library(SentimentAnalysis)
+library(textdata)
+library(tm)
+library(wordcloud)
+library(ggwordcloud)
+nrc<- tidytext::get_sentiments("nrc")
+```
+
+
+This following code chunk takes in the for text files that are needed for the analysis and converts them into data frames. with columns being entry (1,2,3,4...) character ("C3PO","R2D2") dialogue ("get to the ship")
+```{r}
+#Starwars 4
+text_lines <- readLines("EpisodeIV_dialogues.txt")
+
+
+# Initialize vectors to store character names and dialogues
+character_names <- c()
+dialogues <- c()
+
+# Initialize variables to keep track of character name and dialogue
+current_character <- NULL
+current_dialogue <- ""
+
+# Iterate through each line of the text
+for (line in text_lines) {
+  # Check if the line is in all caps (indicating a character name)
+  if (toupper(line) == line) {
+    # If there was a previous character, store its dialogue
+    if (!is.null(current_character)) {
+      character_names <- c(character_names, current_character)
+      dialogues <- c(dialogues, current_dialogue)
+    }
+    # Update current character and reset dialogue
+    current_character <- line
+    current_dialogue <- ""
+  } else {
+    # If not in all caps, append to current dialogue
+    current_dialogue <- paste(current_dialogue, line, sep = " ")
+  }
+}
+
+# Append the last character's dialogue
+if (!is.null(current_character)) {
+  character_names <- c(character_names, current_character)
+  dialogues <- c(dialogues, current_dialogue)
+}
+# Create a data frame from character names and dialogues
+starwars4 <- data.frame(Character = character_names, Dialogue = dialogues, stringsAsFactors = FALSE)
+
+#starwars 5
+system("wc -l EpisodeV_dialogues.txt")
+
+# get vector of character names
+SW5_chars = system("tail -n839 EpisodeV_dialogues.txt | cut -f1 -d':'", intern=TRUE)
+# get vector of dialogue lines
+SW5_diags = system("tail -n839 EpisodeV_dialogues.txt | cut -f2 -d':'", intern=TRUE)
+
+# check character names
+table(SW5_chars)
+# remove apostrophes voices
+SW5_chars = gsub("'S VOICE", "", SW5_chars)
+
+# remove strings between parenthesis in dialogues
+SW5_diags = gsub("\\((.*?)\\)", "", SW5_diags)
+
+# remove extra white spaces at the beginning and the end of dialogues
+SW5_diags = gsub("^\\s+", "", SW5_diags)
+SW5_diags = gsub("\\s+$", "", SW5_diags)
+
+# join characters and dialogues in one table
+SW5 = cbind(character=SW5_chars, dialogue=SW5_diags)
+# save SW5 in file 'SW_EpisodeV.txt'
+write.table(SW5, file="SW_EpisodeV.txt")
+
+# if you want to check the data table
+starwars5 = read.table("SW_EpisodeV.txt")
+
+
+
+#starwars 6
+
+system("wc -l EpisodeVI_dialogues.txt")
+
+# get vector of character names
+SW6_chars = system("tail -n676 EpisodeVI_dialogues.txt | cut -f1", intern=TRUE)
+# get vector of dialogue lines
+SW6_diags = system("tail -n676 EpisodeVI_dialogues.txt | cut -f2", intern=TRUE)
+
+# check character names
+table(SW6_chars)
+# remove strings between parenthesis in SW6_chars
+SW6_chars = gsub("\\((.*?)\\)", "", SW6_chars)
+# remove extra white spaces in SW6_chars
+SW6_chars = gsub("\\s+$", "", SW6_chars)
+
+# remove strings between parenthesis in dialogues
+SW6_diags = gsub("\\((.*?)\\)", "", SW6_diags)
+# remove extra white spaces at the beginning of dialogues
+SW6_diags = gsub("^\\s+", "", SW6_diags)
+
+# remove last line (useless)
+SW6_chars = SW6_chars[-length(SW6_chars)]
+SW6_diags = SW6_diags[-length(SW6_diags)]
+
+# fix DEATH STAR CONTROLLER dialogue (this is the only exception)
+SW6_diags[2] = SW6_diags[3]
+
+# join characters and dialogues in one table
+SW6 = cbind(character=SW6_chars[-3], dialogue=SW6_diags[-3])
+
+# save SW6 in file 'SW_EpisodeVI.txt'
+write.table(SW6, file="SW_EpisodeVI.txt")
+
+# if you want to check the data table
+starwars6 = read.table("SW_EpisodeVI.txt")
+```
+
+
+
+THis is the basic sentiment analysis on the movies using the nrc sentiment dictionary. How this code works is it tokenizes the text in the data frame then joins it to the sentiments of the NRC dataframe. Then it just counts the number of occurances for each sentiment in the attached dataframe. THis gives us the counts of these sentiments. Finally this section of code produces a graph that shows the count of each sentiment. There is also a graph produced for movie 6 that shows the emotional language used by each character. Again this section of code is for Movie 6
+```{r}
+#this is for the 6th starwars movie
+movie_script_tokens6 <- starwars6 %>%
+  unnest_tokens(word, dialogue)
+
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments6 <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_sentiments6 <- movie_script_tokens6 %>%
+  inner_join(sentiments6)
+
+# Step 4: Count the occurrences of each sentiment by character
+sentiment_counts6 <- movie_sentiments6 %>%
+  count(character, sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results
+sentimentcharacter6<-ggplot(sentiment_counts6, aes(x = character, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(title = "Sentiment Analysis of Movie Script",
+       x = "Character",
+       y = "Frequency",
+       fill = "Sentiment") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+# Step 6: Output the results
+#print(sentiment_counts)
+#this is just emotions that are used in the movie and how common/frequent they are
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_script_tokens6 <- starwars6 %>%
+  unnest_tokens(word, dialogue)
+
+# Step 4: Count the occurrences of each sentiment
+sentiment_counts6 <- movie_sentiments6 %>%
+  count(sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results as lines
+sentimentvisual6<-ggplot(sentiment_counts6, aes(x = sentiment, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme_minimal() +
+  labs(title = "Frequency of Emotions in Movie Script: Star Wars 6",
+       x = "Emotion",
+       y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+
+THis is the basic sentiment analysis on the movies using the nrc sentiment dictionary. How this code works is it tokenizes the text in the data frame then joins it to the sentiments of the NRC dataframe. Then it just counts the number of occurances for each sentiment in the attached dataframe. THis gives us the counts of these sentiments. Finally this section of code produces a graph that shows the count of each sentiment. There is also a graph produced for movie 6 that shows the emotional language used by each character. Again this section of code is for Movie 5
+```{r}
+#this is for the 5th starwars movie
+#nrc<- tidytext::get_sentiments("nrc")
+movie_script_tokens5 <- starwars5 %>%
+  unnest_tokens(word, dialogue)
+
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments5 <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_sentiments5 <- movie_script_tokens5 %>%
+  inner_join(sentiments5)
+
+# Step 4: Count the occurrences of each sentiment by character
+sentiment_counts5 <- movie_sentiments5 %>%
+  count(character, sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results
+sentimentcharacter5<-ggplot(sentiment_counts5, aes(x = character, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(title = "Sentiment Analysis of Movie Script",
+       x = "Character",
+       y = "Frequency",
+       fill = "Sentiment") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+# Step 6: Output the results
+#print(sentiment_counts)
+#this is just emotions that are used in the movie and how common/frequent they are
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_script_tokens5 <- starwars5 %>%
+  unnest_tokens(word, dialogue)
+
+# Step 4: Count the occurrences of each sentiment
+sentiment_counts5 <- movie_sentiments5 %>%
+  count(sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results as lines
+sentimentvisual5<-ggplot(sentiment_counts5, aes(x = sentiment, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme_minimal() +
+  labs(title = "Frequency of Emotions in Movie Script: Star Wars 5",
+       x = "Emotion",
+       y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+THis is the basic sentiment analysis on the movies using the nrc sentiment dictionary. How this code works is it tokenizes the text in the data frame then joins it to the sentiments of the NRC dataframe. Then it just counts the number of occurances for each sentiment in the attached dataframe. THis gives us the counts of these sentiments. Finally this section of code produces a graph that shows the count of each sentiment. There is also a graph produced for movie 6 that shows the emotional language used by each character. Again this section of code is for Movie 4
+```{r}
+#this is for the 4th starwars movie
+#nrc<- tidytext::get_sentiments("nrc")
+movie_script_tokens4 <- starwars4 %>%
+  unnest_tokens(word, Dialogue)
+
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments4 <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_sentiments4 <- movie_script_tokens4 %>%
+  inner_join(sentiments4)
+
+# Step 4: Count the occurrences of each sentiment by character
+sentiment_counts4 <- movie_sentiments4 %>%
+  count(Character, sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results
+sentimentcharacter4<-ggplot(sentiment_counts4, aes(x = Character, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity", position = "stack") +
+  theme_minimal() +
+  labs(title = "Sentiment Analysis of Movie Script",
+       x = "Character",
+       y = "Frequency",
+       fill = "Sentiment") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+# Step 6: Output the results
+#print(sentiment_counts)
+#this is just emotions that are used in the movie and how common/frequent they are
+# Step 2: Get sentiment scores using NRC sentiment dictionary
+sentiments <- get_sentiments("nrc")
+
+# Step 3: Join sentiment scores with the tokenized text
+movie_script_tokens4 <- starwars4 %>%
+  unnest_tokens(word, Dialogue)
+
+# Step 4: Count the occurrences of each sentiment
+sentiment_counts4 <- movie_sentiments4 %>%
+  count(sentiment) %>%
+  ungroup() %>%
+  mutate(sentiment = factor(sentiment, levels = rev(names(sort(table(sentiment), decreasing = TRUE)))))
+
+# Step 5: Plot the results as lines
+sentimentvisual4<-ggplot(sentiment_counts4, aes(x = sentiment, y = n)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  theme_minimal() +
+  labs(title = "Frequency of Emotions in Movie Script: Star Wars 4",
+       x = "Emotion",
+       y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+
+now that we have sentiment scores for each of the movies we calculated frequency and the ratio of the words used in each movie. That is what this nex block of code does.
+```{r}
+
+total5 <- sum(sentiment_counts5$n)
+sentiment_counts5 <- sentiment_counts5 %>% mutate(ratio = n/total5)
+
+total6 <- sum(sentiment_counts6$n)
+sentiment_counts6 <- sentiment_counts6 %>% mutate(ratio = n/total6)
+
+
+total4 <- sum(sentiment_counts4$n)
+sentiment_counts4 <- sentiment_counts4 %>% mutate(ratio = n/total4)
+```
+
+After we calculate these ratios we join them into a master data frame that allows us to do all of our analysis.
+```{r}
+final_ratios<-sentiment_counts4[, c("sentiment", "ratio")] %>% rename(ratio4 = ratio) %>% 
+  inner_join(sentiment_counts5) %>% rename(ratio5 = ratio) %>% select(-n) %>%
+  inner_join(sentiment_counts6) %>% rename(ratio6 = ratio) %>% select(-n) %>%
+  mutate(ratio4 = ratio4*100, ratio5 = ratio5*100, ratio6=ratio6*100) 
+
+
+
+```
+
+
+This section runs a chi-squared for proportional counts of words categorized by emotion and just straight counts of words. 
+```{r}
+# Lists to store chi-square test results for counts
+count_chi_square_stats <- list()
+count_chi_square_pvalues <- list()
+
+# Lists to store chi-square test results for ratios
+ratio_chi_square_stats <- list()
+ratio_chi_square_pvalues <- list()
+
+# Unique emotions in the data frames
+emotions <- unique(c(sentiment_counts4$sentiment, sentiment_counts5$sentiment, sentiment_counts6$sentiment))
+
+# Iterate over each emotion
+for (emotion in emotions) {
+  # Subset counts data for the current emotion from each movie
+  counts_data <- list(sentiment_counts4[sentiment_counts4$sentiment == emotion, "n"],
+                      sentiment_counts5[sentiment_counts5$sentiment == emotion, "n"],
+                      sentiment_counts6[sentiment_counts6$sentiment == emotion, "n"])
+  
+  # Perform chi-square test for counts
+  count_chi_square_results <- chisq.test(do.call(rbind, counts_data))
+  
+  # Store test statistics and p-values
+  count_chi_square_stats[[emotion]] <- count_chi_square_results$statistic
+  count_chi_square_pvalues[[emotion]] <- count_chi_square_results$p.value
+  
+  # Subset ratios data for the current emotion from each movie
+  ratios_data <- list(sentiment_counts4[sentiment_counts4$sentiment == emotion, "ratio"],
+                      sentiment_counts5[sentiment_counts5$sentiment == emotion, "ratio"],
+                      sentiment_counts6[sentiment_counts6$sentiment == emotion, "ratio"])
+  
+  # Perform chi-square test for ratios
+  ratio_chi_square_results <- chisq.test(do.call(rbind, ratios_data))
+  
+  # Store test statistics and p-values
+  ratio_chi_square_stats[[emotion]] <- ratio_chi_square_results$statistic
+  ratio_chi_square_pvalues[[emotion]] <- ratio_chi_square_results$p.value
+}
+
+# Combine results into data frames
+count_results_df <- data.frame(emotion = emotions,
+                               chi_square_statistic = unlist(count_chi_square_stats),
+                               p_value = unlist(count_chi_square_pvalues))
+
+ratio_results_df <- data.frame(emotion = emotions,
+                               chi_square_statistic = unlist(ratio_chi_square_stats),
+                               p_value = unlist(ratio_chi_square_pvalues))
+```
+
+this makes word clouds for each movie to give the audience a better idea of the most common word used and to give a better understnading of the dialogue used in the movies.
+```{r}
+#Star Wars #4
+corpus4 <- Corpus(VectorSource(movie_sentiments4$word))
+corpus4 <- tm_map(corpus4, content_transformer(tolower))
+corpus4 <- tm_map(corpus4, removePunctuation)
+corpus4 <- tm_map(corpus4, removeNumbers)
+corpus4 <- tm_map(corpus4, removeWords, stopwords("english"))
+tdm4 <- TermDocumentMatrix(corpus4)
+m4 <- as.matrix(tdm4)
+word_freq4 <- sort(rowSums(m4), decreasing = TRUE)
+word_freq_df4 <- data.frame(word = names(word_freq4), freq = word_freq4)
+top_words4 <- head(word_freq_df4, 40)
+
+# Create the word cloud plot with colors and title for Star Wars 4
+wordcloud_plot4 <- ggplot(top_words4, aes(label = word, size = freq, color = word)) +
+  geom_text_wordcloud() +  # Using the correct function
+  scale_size_area(max_size = 20) +
+  scale_color_manual(values = rainbow(length(unique(top_words4$word)))) +  # Setting colors
+  theme_void() +
+  ggtitle("Star Wars 4") +  # Adding title
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
+
+print(wordcloud_plot4)
+
+
+#Star Wars Movie #5
+corpus5 <- Corpus(VectorSource(movie_sentiments5$word))
+corpus5 <- tm_map(corpus5, content_transformer(tolower))
+corpus5 <- tm_map(corpus5, removePunctuation)
+corpus5 <- tm_map(corpus5, removeNumbers)
+corpus5 <- tm_map(corpus5, removeWords, stopwords("english"))
+tdm5 <- TermDocumentMatrix(corpus5)
+m5 <- as.matrix(tdm5)
+word_freq5 <- sort(rowSums(m5), decreasing = TRUE)
+word_freq_df5 <- data.frame(word = names(word_freq5), freq = word_freq5)
+top_words5 <- head(word_freq_df5, 40)
+
+# Create the word cloud plot with colors and title for Star Wars 5
+wordcloud_plot5 <- ggplot(top_words5, aes(label = word, size = freq, color = word)) +
+  geom_text_wordcloud() +  # Using the correct function
+  scale_size_area(max_size = 20) +
+  scale_color_manual(values = rainbow(length(unique(top_words5$word)))) +  # Setting colors
+  theme_void() +
+  ggtitle("Star Wars 5") +  # Adding title
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
+
+print(wordcloud_plot5)
+
+
+
+#Star Wars #6
+corpus6 <- Corpus(VectorSource(movie_sentiments6$word))
+corpus6 <- tm_map(corpus6, content_transformer(tolower))
+corpus6 <- tm_map(corpus6, removePunctuation)
+corpus6 <- tm_map(corpus6, removeNumbers)
+corpus6 <- tm_map(corpus6, removeWords, stopwords("english"))
+tdm6 <- TermDocumentMatrix(corpus6)
+m6 <- as.matrix(tdm6)
+word_freq6 <- sort(rowSums(m6), decreasing = TRUE)
+word_freq_df6 <- data.frame(word = names(word_freq6), freq = word_freq6)
+top_words6 <- head(word_freq_df6, 40)
+
+# Create the word cloud plot with colors and title for Star Wars 6
+wordcloud_plot6 <- ggplot(top_words6, aes(label = word, size = freq, color = word)) +
+  geom_text_wordcloud() +  # Using the correct function
+  scale_size_area(max_size = 20) +
+  scale_color_manual(values = rainbow(length(unique(top_words6$word)))) +  # Setting colors
+  theme_void() +
+  ggtitle("Star Wars 6") +  # Adding title
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
+
+print(wordcloud_plot6)
+```
+This final chunk of code is just saving graphs and data frames. for access at a later date
+```{r}
+
+ggsave('wordcloud4.jpg', plot = wordcloud_plot4)
+ggsave('wordcloud5.jpg', plot = wordcloud_plot5)
+ggsave('wordcloud6.jpg', plot = wordcloud_plot6)
+
+ggsave('sentimentvisual4.jpg', plot = sentimentvisual4)
+ggsave('sentimentvisual5.jpg', plot = sentimentvisual5)
+ggsave('sentimentvisual6.jpg', plot = sentimentvisual6)
+
+ggsave('sentimentcharacter4.jpg', plot = sentimentcharacter4)
+ggsave('sentimentcharacter5.jpg', plot = sentimentcharacter5)
+ggsave('sentimentcharacter6.jpg', plot = sentimentcharacter6)
+write.csv(count_results_df, "count_results.csv", row.names = FALSE)
+write.csv(ratio_results_df, "ratio_results.csv", row.names = FALSE)
+```
+
