@@ -24,3 +24,10 @@ To conduct the sentiment analysis yourself, you'll need the R markdown file and 
 After running the preprocessing files, three new text files will be saved wherever your working directory is set. Note that this step can be somewhat finicky due to differing encodings on different hardware. If you encounter issues with producing the new workable text files, you can use the provided ones from the DATA/Final data folder. There are three of them one for each movie.
 
 Once the new text files are generated, run the R markdown files in the analysis folder, ensuring that the working directory is set to the location of the new text files. After the analysis completes, all tables, graphs, and analysis will be ready. You can download the visualizations and review the final Chi-squared values inside the R markdown file.
+
+
+## References
+
+[1] G. Sanchez, “Starwars Github page,” 2014. [Online]. Available: https://github.com/gastonstat/StarWars. [Accessed Feb. 6, 2024]
+
+[2] S. Mohammad, “NRC Emotion Lexicon” 2011. [Online]. Available: https://saifmohammad.com/WebPages/NRC-Emotion-Lexicon.htm#:~:text=The%20NRC%20Emotion%20Lexicon%20is,were%20manually%20done%20by%20crowdsourcing. [Accessed Feb. 14, 2024]
